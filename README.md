@@ -54,8 +54,9 @@ enable: []
 - Fiber v2/v3: routes, nested groups, prefix middleware, request sources, and version-specific redirects
 - templ: request-taint checks for explicit HTML, URL, CSS, and JavaScript sanitization bypasses
 
-Dynamic paths, router aliases passed through arbitrary functions, cross-package
-taint, and network-level controls are intentionally not guessed. Fiber v2 and
+Dynamic paths, router aliases passed through arbitrary functions, and
+network-level controls are intentionally not guessed. Shallow cross-package
+taint summaries recognize request-source wrapper functions. Fiber v2 and
 v3 are both recognized; version-specific request and redirect APIs are handled
 separately.
 
@@ -84,8 +85,8 @@ separately.
 
 ## Architecture
 
-The CLI loads each package once with `go/packages`. Typed AST information is
-shared by a small rule registry and the route collector. A `go/analysis`
+The CLI loads each package once with `go/packages`. Typed AST information and
+request-source return summaries are shared by a small rule registry and the route collector. A `go/analysis`
 adapter supports `analysistest` and future linter integrations. Findings and
 routes are deterministic intermediate models; text and JSON are presentation
 layers.
@@ -99,8 +100,8 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are richer cross-package taint summaries and
-authorization-property modeling.
+Next priorities are authorization-property modeling and SSA-backed summaries
+for more complex cross-package data flow.
 
 ## Contributing
 

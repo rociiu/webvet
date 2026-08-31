@@ -82,3 +82,20 @@ func TestMultiFilePackage(t *testing.T) {
 		t.Fatalf("multi-file route collection failed: %+v", result.Routes)
 	}
 }
+
+func TestCrossPackageTaintSummary(t *testing.T) {
+	t.Parallel()
+	_, here, _, _ := runtime.Caller(0)
+	root := filepath.Dir(filepath.Dir(here))
+	result, err := analyzer.Run([]string{"./testdata/projects/crosspkg/app"}, analyzer.Options{Dir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int{}
+	for _, f := range result.Findings {
+		seen[f.RuleID]++
+	}
+	if seen["WEBVET-TEMPLATE-001"] != 1 || seen["WEBVET-REDIRECT-001"] != 1 {
+		t.Fatalf("cross-package findings: %v", seen)
+	}
+}

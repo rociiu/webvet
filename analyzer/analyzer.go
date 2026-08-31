@@ -19,10 +19,11 @@ type Result struct {
 }
 
 type Options struct {
-	Dir        string
-	Disabled   map[string]bool
-	Enabled    map[string]bool
-	RoutesOnly bool
+	Dir            string
+	Disabled       map[string]bool
+	Enabled        map[string]bool
+	RoutesOnly     bool
+	TaintSummaries map[string]bool
 }
 
 func Run(patterns []string, opts Options) (Result, error) {
@@ -42,6 +43,9 @@ func Run(patterns []string, opts Options) (Result, error) {
 	}
 	if n := packages.PrintErrors(pkgs); n > 0 {
 		return Result{}, fmt.Errorf("package loading failed with %d error(s)", n)
+	}
+	if !opts.RoutesOnly {
+		opts.TaintSummaries = rules.BuildTaintSummaries(applicationPackages(pkgs))
 	}
 	var out Result
 	for _, pkg := range pkgs {
@@ -84,8 +88,11 @@ func analyzePackage(pkg *packages.Package, opts Options) Result {
 	if opts.RoutesOnly {
 		return out
 	}
+	if opts.TaintSummaries == nil {
+		opts.TaintSummaries = rules.BuildTaintSummaries([]*packages.Package{pkg})
+	}
 	for _, file := range pkg.Syntax {
-		ctx := &rules.Context{Package: pkg, File: file, Fset: pkg.Fset, Types: pkg.TypesInfo}
+		ctx := &rules.Context{Package: pkg, File: file, Fset: pkg.Fset, Types: pkg.TypesInfo, TaintSummaries: opts.TaintSummaries}
 		for _, rule := range rules.Default() {
 			id := rule.Meta().ID
 			if opts.Disabled[id] && !opts.Enabled[id] {
@@ -118,6 +125,47 @@ func analyzePackage(pkg *packages.Package, opts Options) Result {
 				out.Findings = append(out.Findings, finding)
 			}
 		}
+	}
+	return out
+}
+
+func applicationPackages(roots []*packages.Package) []*packages.Package {
+	seen := map[*packages.Package]bool{}
+	modules := map[string]bool{}
+	for _, root := range roots {
+		if root.Module != nil {
+			modules[root.Module.Path] = true
+		}
+	}
+	var out []*packages.Package
+	var visit func(*packages.Package)
+	visit = func(pkg *packages.Package) {
+		if pkg == nil || seen[pkg] {
+			return
+		}
+		seen[pkg] = true
+		if pkg.Module != nil && !modules[pkg.Module.Path] {
+			return
+		}
+		if pkg.Module == nil {
+			isRoot := false
+			for _, root := range roots {
+				if root == pkg {
+					isRoot = true
+					break
+				}
+			}
+			if !isRoot {
+				return
+			}
+		}
+		out = append(out, pkg)
+		for _, imp := range pkg.Imports {
+			visit(imp)
+		}
+	}
+	for _, root := range roots {
+		visit(root)
 	}
 	return out
 }

@@ -72,7 +72,7 @@ func exprTainted(c *Context, e ast.Expr, vars map[*types.Var]bool) bool {
 		v, ok := c.Types.ObjectOf(x).(*types.Var)
 		return ok && vars[v]
 	case *ast.CallExpr:
-		if isSourceCall(c.Types, x) {
+		if isSourceCall(c.Types, x) || isSummarizedSourceCall(c, x) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -88,6 +88,10 @@ func exprTainted(c *Context, e ast.Expr, vars map[*types.Var]bool) bool {
 		return exprTainted(c, x.X, vars) || exprTainted(c, x.Index, vars)
 	}
 	return false
+}
+func isSummarizedSourceCall(c *Context, call *ast.CallExpr) bool {
+	obj := calledFunc(c.Types, call)
+	return obj != nil && c.TaintSummaries[functionKey(obj)]
 }
 func isSourceCall(info *types.Info, call *ast.CallExpr) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)

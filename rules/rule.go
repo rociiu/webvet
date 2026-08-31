@@ -21,10 +21,11 @@ type Metadata struct {
 	Frameworks  []string          `json:"frameworks"`
 }
 type Context struct {
-	Package *packages.Package
-	File    *ast.File
-	Fset    *token.FileSet
-	Types   *types.Info
+	Package        *packages.Package
+	File           *ast.File
+	Fset           *token.FileSet
+	Types          *types.Info
+	TaintSummaries map[string]bool
 }
 type Rule interface {
 	Meta() Metadata
