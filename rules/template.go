@@ -16,36 +16,7 @@ func templateRule() Rule {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			tainted := map[*types.Var]bool{}
-			// Iterate to a fixed point so straightforward assignment chains work regardless of statement shape.
-			for changed := true; changed; {
-				changed = false
-				ast.Inspect(fn.Body, func(n ast.Node) bool {
-					switch x := n.(type) {
-					case *ast.AssignStmt:
-						for i, rhs := range x.Rhs {
-							if i < len(x.Lhs) && exprTainted(c, rhs, tainted) {
-								if id, ok := x.Lhs[i].(*ast.Ident); ok {
-									if v, ok := c.Types.ObjectOf(id).(*types.Var); ok && !tainted[v] {
-										tainted[v] = true
-										changed = true
-									}
-								}
-							}
-						}
-					case *ast.ValueSpec:
-						for i, rhs := range x.Values {
-							if i < len(x.Names) && exprTainted(c, rhs, tainted) {
-								if v, ok := c.Types.ObjectOf(x.Names[i]).(*types.Var); ok && !tainted[v] {
-									tainted[v] = true
-									changed = true
-								}
-							}
-						}
-					}
-					return true
-				})
-			}
+			tainted := taintedVariables(c, fn.Body)
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
 				if !ok || len(call.Args) != 1 || !templateSink(c, call) {
@@ -59,6 +30,40 @@ func templateRule() Rule {
 		}
 		return out
 	}}
+}
+
+func taintedVariables(c *Context, body *ast.BlockStmt) map[*types.Var]bool {
+	tainted := map[*types.Var]bool{}
+	// Iterate to a fixed point so straightforward assignment chains work regardless of statement shape.
+	for changed := true; changed; {
+		changed = false
+		ast.Inspect(body, func(n ast.Node) bool {
+			switch x := n.(type) {
+			case *ast.AssignStmt:
+				for i, rhs := range x.Rhs {
+					if i < len(x.Lhs) && exprTainted(c, rhs, tainted) {
+						if id, ok := x.Lhs[i].(*ast.Ident); ok {
+							if v, ok := c.Types.ObjectOf(id).(*types.Var); ok && !tainted[v] {
+								tainted[v] = true
+								changed = true
+							}
+						}
+					}
+				}
+			case *ast.ValueSpec:
+				for i, rhs := range x.Values {
+					if i < len(x.Names) && exprTainted(c, rhs, tainted) {
+						if v, ok := c.Types.ObjectOf(x.Names[i]).(*types.Var); ok && !tainted[v] {
+							tainted[v] = true
+							changed = true
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
+	return tainted
 }
 
 func exprTainted(c *Context, e ast.Expr, vars map[*types.Var]bool) bool {

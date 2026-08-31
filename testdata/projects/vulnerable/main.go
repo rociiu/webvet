@@ -21,6 +21,10 @@ func main() {
 	r.Get("/", home)
 	r.With(auth).Get("/profile", profile)
 	r.Get("/metrics", metrics)
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(auth)
+		r.Get("/users", home)
+	})
 	http.HandleFunc("/health", home)
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	_ = srv.ListenAndServe()

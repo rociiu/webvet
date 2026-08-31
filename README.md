@@ -20,6 +20,7 @@ rename is a mechanical change.
 ```sh
 webvet ./...
 webvet -severity high -format json ./...
+webvet -format sarif ./... > webvet.sarif
 webvet routes ./...
 webvet rules
 ```
@@ -33,6 +34,15 @@ Local suppressions require a rule and reason:
 ```go
 //webvet:ignore WEBVET-HTTP-001 -- timeout enforced by the private ingress
 srv := &http.Server{Addr: ":8080"}
+```
+
+Project defaults can be stored in `.webvet.yml`; CLI flags take precedence:
+
+```yaml
+severity: medium
+disable:
+  - WEBVET-HEADER-001
+enable: []
 ```
 
 ## Supported frameworks
@@ -50,13 +60,20 @@ taint, and network-level controls are intentionally not guessed.
 |---|---:|---|
 | WEBVET-HTTP-001 | Medium | `http.Server` missing `ReadHeaderTimeout` |
 | WEBVET-HTTP-002 | High | pprof exposed through the default server |
+| WEBVET-HTTP-003 | Medium | `http.Server` missing `WriteTimeout` |
+| WEBVET-HTTP-004 | Medium | missing idle connection deadline |
 | WEBVET-COOKIE-001 | High | sensitive cookie missing `HttpOnly` |
 | WEBVET-COOKIE-002 | High | sensitive cookie missing `Secure` |
 | WEBVET-COOKIE-003 | High | `SameSite=None` without `Secure` |
 | WEBVET-CORS-001 | High | credentialed wildcard CORS |
 | WEBVET-GIN-001 | High | unrestricted Gin trusted proxies |
 | WEBVET-TEMPLATE-001 | High | request input converted to trusted template content |
+| WEBVET-HEADER-001 | Low | explicit HTML response lacks a detected browser policy |
+| WEBVET-BODY-001 | Medium | request body read without a size limit |
+| WEBVET-REDIRECT-001 | High | request input used as a redirect target |
+| WEBVET-ROUTE-001 | Medium | GET handler performs an obvious mutation |
 | WEBVET-ROUTE-002 | Medium | sensitive route has no detected route middleware |
+| WEBVET-ROUTE-003 | High | cookie-authenticated unsafe method lacks detected CSRF middleware |
 
 ## Architecture
 
@@ -75,10 +92,8 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are CSRF middleware propagation, security-header policy,
-production server write/idle timeout checks, upload-size limits, and safe
-redirect analysis. Echo, Fiber, templ, SARIF, and cross-package taint are later
-milestones.
+Next priorities are Echo and Fiber adapters, templ awareness, richer
+cross-package taint summaries, and authorization-property modeling.
 
 ## Contributing
 

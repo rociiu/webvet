@@ -2,6 +2,7 @@ package vulnerable
 
 import (
 	"html/template"
+	"io"
 	"net/http"
 	_ "net/http/pprof" // want `pprof is registered on an exposed default HTTP server`
 	"time"
@@ -10,10 +11,17 @@ import (
 	"github.com/rs/cors"
 )
 
-var goodServer = &http.Server{ReadHeaderTimeout: 5 * time.Second}
+var goodServer = &http.Server{ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
 
 func badServer() {
-	_ = &http.Server{} // want `http.Server does not configure ReadHeaderTimeout`
+	_ = &http.Server{} // want `http.Server does not configure ReadHeaderTimeout` `http.Server does not configure a non-zero WriteTimeout` `http.Server does not configure a non-zero IdleTimeout`
+}
+
+func configuredAfterConstruction() {
+	srv := &http.Server{}
+	srv.ReadHeaderTimeout = 5 * time.Second
+	srv.WriteTimeout = 10 * time.Second
+	srv.IdleTimeout = 30 * time.Second
 }
 
 func cookies(w http.ResponseWriter) {
@@ -44,4 +52,50 @@ func unsafeGin(engine *gin.Engine) {
 
 var badCORS = cors.Options{ // want `CORS allows credentials with a wildcard origin`
 	AllowedOrigins: []string{"*"}, AllowCredentials: true,
+}
+
+func htmlResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html") // want `HTML response has no detected Content-Security-Policy or X-Frame-Options header`
+}
+
+func protectedHTML(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'")
+}
+
+func readBody(_ http.ResponseWriter, r *http.Request) {
+	_, _ = io.ReadAll(r.Body) // want `Request body is read without an explicit size limit`
+}
+
+func boundedBody(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1024)
+	_, _ = io.ReadAll(r.Body)
+}
+
+func openRedirect(w http.ResponseWriter, r *http.Request) {
+	next := r.FormValue("next")
+	http.Redirect(w, r, next, http.StatusFound) // want `User-controlled HTTP input is used as a redirect target`
+}
+func safeRedirect(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/home", http.StatusFound)
+}
+
+type store struct{}
+
+func (*store) Delete(any) {}
+
+var db store
+
+func deleteUser(*gin.Context)   { db.Delete("user") }
+func updateUser(*gin.Context)   {}
+func cookieAuth(c *gin.Context) { _, _ = c.Request.Cookie("session") }
+func csrf(*gin.Context)         {}
+
+func ginRoutes() {
+	r := gin.New()
+	r.Use(cookieAuth)
+	r.POST("/profile", updateUser)    // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
+	r.GET("/delete-user", deleteUser) // want `GET handler performs an obvious state mutation`
+	admin := r.Group("/admin", csrf)
+	admin.POST("/profile", updateUser)
 }

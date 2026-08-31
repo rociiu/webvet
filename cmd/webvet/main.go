@@ -9,14 +9,19 @@ import (
 	"text/tabwriter"
 
 	"github.com/rociiu/webvet/analyzer"
+	"github.com/rociiu/webvet/config"
 	"github.com/rociiu/webvet/report"
 	"github.com/rociiu/webvet/rules"
 )
 
-const version = "0.1.0-dev"
+var version = "0.1.0-dev"
 
 func main() { os.Exit(run(os.Args[1:])) }
 func run(args []string) int {
+	if err := rules.Validate(); err != nil {
+		fmt.Fprintln(os.Stderr, "webvet:", err)
+		return 2
+	}
 	if len(args) > 0 {
 		switch args[0] {
 		case "version":
@@ -30,10 +35,33 @@ func run(args []string) int {
 	}
 	fs := flag.NewFlagSet("webvet", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	format := fs.String("format", "text", "output format: text or json")
+	format := fs.String("format", "text", "output format: text, json, or sarif")
 	severity := fs.String("severity", "info", "minimum severity")
 	disable := fs.String("disable", "", "comma-separated rule IDs to disable")
+	enable := fs.String("enable", "", "comma-separated rule IDs to enable")
+	configPath := fs.String("config", ".webvet.yml", "configuration file")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	set := visited(fs)
+	cfg, err := config.Load(*configPath, set["config"])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "webvet:", err)
+		return 2
+	}
+	if !set["severity"] && cfg.Severity != "" {
+		*severity = cfg.Severity
+	}
+	disabled := stringSet(cfg.Disable)
+	if set["disable"] {
+		disabled = parseDisable(*disable)
+	}
+	enabled := stringSet(cfg.Enable)
+	if set["enable"] {
+		enabled = parseDisable(*enable)
+	}
+	if err := validateRuleSets(disabled, enabled); err != nil {
+		fmt.Fprintln(os.Stderr, "webvet:", err)
 		return 2
 	}
 	min, err := report.ParseSeverity(*severity)
@@ -41,7 +69,7 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, "webvet:", err)
 		return 2
 	}
-	result, err := analyzer.Run(fs.Args(), analyzer.Options{Disabled: parseDisable(*disable)})
+	result, err := analyzer.Run(fs.Args(), analyzer.Options{Disabled: disabled, Enabled: enabled})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "webvet:", err)
 		return 2
@@ -57,6 +85,8 @@ func run(args []string) int {
 		err = report.WriteText(os.Stdout, filtered)
 	case "json":
 		err = report.WriteJSON(os.Stdout, filtered)
+	case "sarif":
+		err = report.WriteSARIF(os.Stdout, filtered, sarifMetadata(), version)
 	default:
 		fmt.Fprintf(os.Stderr, "webvet: unknown format %q\n", *format)
 		return 2
@@ -70,12 +100,20 @@ func run(args []string) int {
 	}
 	return 0
 }
+func sarifMetadata() []report.RuleInfo {
+	metas := rules.MetadataList()
+	out := make([]report.RuleInfo, 0, len(metas))
+	for _, m := range metas {
+		out = append(out, report.RuleInfo{ID: m.ID, Name: m.Name, Description: m.Description, CWE: m.CWE})
+	}
+	return out
+}
 func runRoutes(args []string) int {
 	fs := flag.NewFlagSet("webvet routes", flag.ContinueOnError)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	result, err := analyzer.Run(fs.Args(), analyzer.Options{})
+	result, err := analyzer.Run(fs.Args(), analyzer.Options{RoutesOnly: true})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "webvet:", err)
 		return 2
@@ -114,4 +152,27 @@ func parseDisable(s string) map[string]bool {
 		}
 	}
 	return m
+}
+func stringSet(items []string) map[string]bool {
+	m := map[string]bool{}
+	for _, item := range items {
+		m[item] = true
+	}
+	return m
+}
+func visited(fs *flag.FlagSet) map[string]bool {
+	m := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { m[f.Name] = true })
+	return m
+}
+func validateRuleSets(sets ...map[string]bool) error {
+	known := rules.KnownIDs()
+	for _, set := range sets {
+		for id := range set {
+			if !known[id] {
+				return fmt.Errorf("unknown rule %q", id)
+			}
+		}
+	}
+	return nil
 }

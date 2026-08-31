@@ -1,8 +1,11 @@
 package analyzer
 
 import (
-	"github.com/rociiu/webvet/rules"
+	"go/ast"
+	"go/token"
+
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/packages"
 )
 
 // New returns a standard go/analysis adapter. The CLI uses Run so route
@@ -13,16 +16,29 @@ func New() *analysis.Analyzer {
 		Name: "webvet",
 		Doc:  "checks Go web-application security semantics",
 		Run: func(pass *analysis.Pass) (any, error) {
-			for _, file := range pass.Files {
-				ctx := &rules.Context{File: file, Fset: pass.Fset, Types: pass.TypesInfo}
-				for _, r := range rules.Default() {
-					for _, f := range r.Run(ctx) {
-						pos := pass.Fset.File(file.Pos()).LineStart(f.Line)
-						pass.Report(analysis.Diagnostic{Pos: pos, Category: f.RuleID, Message: f.Message})
-					}
+			pkg := &packages.Package{Fset: pass.Fset, Syntax: pass.Files, Types: pass.Pkg, TypesInfo: pass.TypesInfo}
+			result := analyzePackage(pkg, Options{})
+			for _, f := range result.Findings {
+				if pos := findingPos(pass.Fset, pass.Files, f.Filename, f.Line, f.Column); pos.IsValid() {
+					pass.Report(analysis.Diagnostic{Pos: pos, Category: f.RuleID, Message: f.Message})
 				}
 			}
 			return nil, nil
 		},
 	}
+}
+
+func findingPos(fset *token.FileSet, files []*ast.File, filename string, line, column int) token.Pos {
+	for _, file := range files {
+		f := fset.File(file.Pos())
+		if f == nil || fset.Position(file.Pos()).Filename != filename || line < 1 || line > f.LineCount() {
+			continue
+		}
+		pos := f.LineStart(line)
+		if column > 1 {
+			pos += token.Pos(column - 1)
+		}
+		return pos
+	}
+	return token.NoPos
 }

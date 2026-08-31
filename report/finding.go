@@ -15,7 +15,13 @@ const (
 	Critical
 )
 
-func (s Severity) String() string { return [...]string{"INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}[s] }
+func (s Severity) String() string {
+	names := []string{"INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
+	if int(s) < 0 || int(s) >= len(names) {
+		return "UNKNOWN"
+	}
+	return names[s]
+}
 func ParseSeverity(v string) (Severity, error) {
 	for i, n := range []string{"info", "low", "medium", "high", "critical"} {
 		if strings.EqualFold(v, n) {
@@ -34,7 +40,13 @@ const (
 	ConfidenceHigh
 )
 
-func (c Confidence) String() string               { return [...]string{"LOW", "MEDIUM", "HIGH"}[c] }
+func (c Confidence) String() string {
+	names := []string{"LOW", "MEDIUM", "HIGH"}
+	if int(c) < 0 || int(c) >= len(names) {
+		return "UNKNOWN"
+	}
+	return names[c]
+}
 func (c Confidence) MarshalJSON() ([]byte, error) { return []byte(fmt.Sprintf("%q", c.String())), nil }
 
 type Finding struct {

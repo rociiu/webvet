@@ -12,41 +12,7 @@ func httpTimeoutRule() Rule {
 	m := Metadata{ID: "WEBVET-HTTP-001", Name: "HTTP server missing ReadHeaderTimeout", Description: "http.Server missing ReadHeaderTimeout", Severity: report.Medium, CWE: "CWE-400", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
-		safeObjects := map[types.Object]bool{}
-		ast.Inspect(c.File, func(n ast.Node) bool {
-			a, ok := n.(*ast.AssignStmt)
-			if !ok {
-				return true
-			}
-			for i, lhs := range a.Lhs {
-				sel, ok := lhs.(*ast.SelectorExpr)
-				if !ok || sel.Sel.Name != "ReadHeaderTimeout" || i >= len(a.Rhs) || obviouslyZero(a.Rhs[i]) {
-					continue
-				}
-				if id, ok := sel.X.(*ast.Ident); ok {
-					safeObjects[c.Types.ObjectOf(id)] = true
-				}
-			}
-			return true
-		})
-		safeLiterals := map[*ast.CompositeLit]bool{}
-		ast.Inspect(c.File, func(n ast.Node) bool {
-			switch x := n.(type) {
-			case *ast.AssignStmt:
-				for i, rhs := range x.Rhs {
-					if i < len(x.Lhs) {
-						markSafeServerLiteral(c, x.Lhs[i], rhs, safeObjects, safeLiterals)
-					}
-				}
-			case *ast.ValueSpec:
-				for i, rhs := range x.Values {
-					if i < len(x.Names) {
-						markSafeServerLiteral(c, x.Names[i], rhs, safeObjects, safeLiterals)
-					}
-				}
-			}
-			return true
-		})
+		safeLiterals := configuredServerLiterals(c, "ReadHeaderTimeout")
 		ast.Inspect(c.File, func(n ast.Node) bool {
 			lit, ok := n.(*ast.CompositeLit)
 			if !ok || compositeTypePath(c.Types, lit) != "net/http.Server" || safeLiterals[lit] {
@@ -66,6 +32,45 @@ func httpTimeoutRule() Rule {
 		})
 		return out
 	}}
+}
+
+func configuredServerLiterals(c *Context, field string) map[*ast.CompositeLit]bool {
+	safeObjects := map[types.Object]bool{}
+	ast.Inspect(c.File, func(n ast.Node) bool {
+		a, ok := n.(*ast.AssignStmt)
+		if !ok {
+			return true
+		}
+		for i, lhs := range a.Lhs {
+			sel, ok := lhs.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != field || i >= len(a.Rhs) || obviouslyZero(a.Rhs[i]) {
+				continue
+			}
+			if id, ok := sel.X.(*ast.Ident); ok {
+				safeObjects[c.Types.ObjectOf(id)] = true
+			}
+		}
+		return true
+	})
+	literals := map[*ast.CompositeLit]bool{}
+	ast.Inspect(c.File, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.AssignStmt:
+			for i, rhs := range x.Rhs {
+				if i < len(x.Lhs) {
+					markSafeServerLiteral(c, x.Lhs[i], rhs, safeObjects, literals)
+				}
+			}
+		case *ast.ValueSpec:
+			for i, rhs := range x.Values {
+				if i < len(x.Names) {
+					markSafeServerLiteral(c, x.Names[i], rhs, safeObjects, literals)
+				}
+			}
+		}
+		return true
+	})
+	return literals
 }
 
 func markSafeServerLiteral(c *Context, lhs, rhs ast.Expr, safe map[types.Object]bool, literals map[*ast.CompositeLit]bool) {

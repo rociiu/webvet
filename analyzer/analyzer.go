@@ -19,8 +19,10 @@ type Result struct {
 }
 
 type Options struct {
-	Dir      string
-	Disabled map[string]bool
+	Dir        string
+	Disabled   map[string]bool
+	Enabled    map[string]bool
+	RoutesOnly bool
 }
 
 func Run(patterns []string, opts Options) (Result, error) {
@@ -41,30 +43,14 @@ func Run(patterns []string, opts Options) (Result, error) {
 	if n := packages.PrintErrors(pkgs); n > 0 {
 		return Result{}, fmt.Errorf("package loading failed with %d error(s)", n)
 	}
-	registry := rules.Default()
 	var out Result
 	for _, pkg := range pkgs {
 		if pkg.TypesInfo == nil {
 			continue
 		}
-		out.Routes = append(out.Routes, route.Collect(pkg)...)
-		for _, file := range pkg.Syntax {
-			ctx := &rules.Context{Package: pkg, File: file, Fset: cfg.Fset, Types: pkg.TypesInfo}
-			for _, rule := range registry {
-				if opts.Disabled[rule.Meta().ID] {
-					continue
-				}
-				for _, finding := range rule.Run(ctx) {
-					if !suppressed(file, cfg.Fset, finding) {
-						out.Findings = append(out.Findings, finding)
-					}
-				}
-			}
-		}
-	}
-	// Route-derived checks run once after the graph is assembled.
-	if !opts.Disabled["WEBVET-ROUTE-002"] {
-		out.Findings = append(out.Findings, rules.CheckSensitiveRoutes(out.Routes)...)
+		result := analyzePackage(pkg, opts)
+		out.Routes = append(out.Routes, result.Routes...)
+		out.Findings = append(out.Findings, result.Findings...)
 	}
 	sort.Slice(out.Findings, func(i, j int) bool {
 		a, b := out.Findings[i], out.Findings[j]
@@ -90,6 +76,59 @@ func Run(patterns []string, opts Options) (Result, error) {
 		return a.Position.Filename < b.Position.Filename
 	})
 	return out, nil
+}
+
+func analyzePackage(pkg *packages.Package, opts Options) Result {
+	routes := route.Collect(pkg)
+	out := Result{Routes: routes}
+	if opts.RoutesOnly {
+		return out
+	}
+	for _, file := range pkg.Syntax {
+		ctx := &rules.Context{Package: pkg, File: file, Fset: pkg.Fset, Types: pkg.TypesInfo}
+		for _, rule := range rules.Default() {
+			id := rule.Meta().ID
+			if opts.Disabled[id] && !opts.Enabled[id] {
+				continue
+			}
+			for _, finding := range rule.Run(ctx) {
+				if !suppressed(file, pkg.Fset, finding) {
+					out.Findings = append(out.Findings, finding)
+				}
+			}
+		}
+	}
+	if !opts.Disabled["WEBVET-ROUTE-002"] || opts.Enabled["WEBVET-ROUTE-002"] {
+		for _, finding := range rules.CheckSensitiveRoutes(routes) {
+			if !suppressedInPackage(pkg, finding) {
+				out.Findings = append(out.Findings, finding)
+			}
+		}
+	}
+	if !opts.Disabled["WEBVET-ROUTE-001"] || opts.Enabled["WEBVET-ROUTE-001"] {
+		for _, finding := range rules.CheckStateChangingGET(pkg, routes) {
+			if !suppressedInPackage(pkg, finding) {
+				out.Findings = append(out.Findings, finding)
+			}
+		}
+	}
+	if !opts.Disabled["WEBVET-ROUTE-003"] || opts.Enabled["WEBVET-ROUTE-003"] {
+		for _, finding := range rules.CheckCSRF(pkg, routes) {
+			if !suppressedInPackage(pkg, finding) {
+				out.Findings = append(out.Findings, finding)
+			}
+		}
+	}
+	return out
+}
+
+func suppressedInPackage(pkg *packages.Package, finding report.Finding) bool {
+	for _, file := range pkg.Syntax {
+		if pkg.Fset.Position(file.Pos()).Filename == finding.Filename {
+			return suppressed(file, pkg.Fset, finding)
+		}
+	}
+	return false
 }
 
 func suppressed(file *ast.File, fset *token.FileSet, finding report.Finding) bool {
