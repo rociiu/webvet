@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/webvet/webvet/analyzer"
-	"github.com/webvet/webvet/report"
-	"github.com/webvet/webvet/rules"
+	"github.com/rociiu/webvet/analyzer"
+	"github.com/rociiu/webvet/report"
+	"github.com/rociiu/webvet/rules"
 )
 
 const version = "0.1.0-dev"

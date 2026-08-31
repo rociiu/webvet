@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"strings"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 )
 
 func ginProxyRule() Rule {

@@ -9,7 +9,7 @@ see. Version 0.1 favors a small number of explainable, high-confidence checks.
 ## Install
 
 ```sh
-go install github.com/webvet/webvet/cmd/webvet@latest
+go install github.com/rociiu/webvet/cmd/webvet@latest
 ```
 
 The module path is isolated to `go.mod` and internal imports, so a future owner

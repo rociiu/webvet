@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/webvet/webvet/analyzer"
+	"github.com/rociiu/webvet/analyzer"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

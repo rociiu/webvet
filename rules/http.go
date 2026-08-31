@@ -5,7 +5,7 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 )
 
 func httpTimeoutRule() Rule {

@@ -1,4 +1,4 @@
-module github.com/webvet/webvet
+module github.com/rociiu/webvet
 
 go 1.25
 

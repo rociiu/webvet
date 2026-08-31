@@ -1,7 +1,7 @@
 package analyzer
 
 import (
-	"github.com/webvet/webvet/rules"
+	"github.com/rociiu/webvet/rules"
 	"golang.org/x/tools/go/analysis"
 )
 

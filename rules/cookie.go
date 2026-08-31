@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 )
 
 var cookieHTTPOnlyMeta = Metadata{ID: "WEBVET-COOKIE-001", Name: "Sensitive cookie missing HttpOnly", Description: "sensitive cookie missing HttpOnly", Severity: report.High, CWE: "CWE-1004", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi"}}

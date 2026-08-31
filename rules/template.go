@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 )
 
 func templateRule() Rule {

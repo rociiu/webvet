@@ -3,7 +3,7 @@ package rules
 import (
 	"go/ast"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 )
 
 func corsRule() Rule {

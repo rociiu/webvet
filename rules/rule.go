@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/webvet/webvet/report"
+	"github.com/rociiu/webvet/report"
 	"golang.org/x/tools/go/packages"
 )
 

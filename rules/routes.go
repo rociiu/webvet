@@ -3,8 +3,8 @@ package rules
 import (
 	"strings"
 
-	"github.com/webvet/webvet/report"
-	"github.com/webvet/webvet/route"
+	"github.com/rociiu/webvet/report"
+	"github.com/rociiu/webvet/route"
 )
 
 var sensitiveRouteMeta = Metadata{ID: "WEBVET-ROUTE-002", Name: "Unprotected sensitive route", Description: "sensitive endpoint has no detected route middleware", Severity: report.Medium, CWE: "CWE-306", Confidence: report.ConfidenceLow, Frameworks: []string{"gin", "chi"}}

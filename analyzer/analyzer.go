@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/webvet/webvet/report"
-	"github.com/webvet/webvet/route"
-	"github.com/webvet/webvet/rules"
+	"github.com/rociiu/webvet/report"
+	"github.com/rociiu/webvet/route"
+	"github.com/rociiu/webvet/rules"
 	"golang.org/x/tools/go/packages"
 )
 
