@@ -7,7 +7,7 @@ import (
 )
 
 func corsRule() Rule {
-	m := Metadata{ID: "WEBVET-CORS-001", Name: "Credentialed wildcard CORS", Description: "wildcard CORS combined with credentials", Severity: report.High, CWE: "CWE-942", Confidence: report.ConfidenceHigh, Frameworks: []string{"gin", "chi", "net/http"}}
+	m := Metadata{ID: "WEBVET-CORS-001", Name: "Credentialed wildcard CORS", Description: "wildcard CORS combined with credentials", Severity: report.High, CWE: "CWE-942", Confidence: report.ConfidenceHigh, Frameworks: []string{"gin", "chi", "echo", "net/http"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		ast.Inspect(c.File, func(n ast.Node) bool {

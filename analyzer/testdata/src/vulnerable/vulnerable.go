@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"github.com/rs/cors"
 )
 
@@ -98,4 +99,28 @@ func ginRoutes() {
 	r.GET("/delete-user", deleteUser) // want `GET handler performs an obvious state mutation`
 	admin := r.Group("/admin", csrf)
 	admin.POST("/profile", updateUser)
+}
+
+func echoUpdate(*echo.Context) error { return nil }
+func echoDelete(*echo.Context) error { db.Delete("user"); return nil }
+func echoCookieAuth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error { _, _ = c.Request().Cookie("session"); return next(c) }
+}
+func echoCSRF(next echo.HandlerFunc) echo.HandlerFunc { return next }
+func echoUnsafeTemplate(c *echo.Context) template.HTML {
+	bio := c.FormValue("bio")
+	return template.HTML(bio) // want `User-controlled HTTP input is converted to template.HTML`
+}
+func echoRedirect(c *echo.Context) error {
+	next := c.QueryParam("next")
+	return c.Redirect(http.StatusFound, next) // want `User-controlled HTTP input is used as a redirect target`
+}
+
+func echoRoutes() {
+	e := echo.New()
+	e.POST("/profile", echoUpdate, echoCookieAuth) // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
+	e.GET("/delete", echoDelete)                   // want `GET handler performs an obvious state mutation`
+	e.GET("/debug", echoUpdate)                    // want `No route-level middleware was detected for sensitive endpoint /debug`
+	admin := e.Group("/admin", echoCookieAuth, echoCSRF)
+	admin.POST("/profile", echoUpdate)
 }

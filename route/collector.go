@@ -14,6 +14,7 @@ import (
 var routeMethods = map[string]string{
 	"Get": "GET", "Post": "POST", "Put": "PUT", "Patch": "PATCH", "Delete": "DELETE", "Head": "HEAD", "Options": "OPTIONS",
 	"GET": "GET", "POST": "POST", "PUT": "PUT", "PATCH": "PATCH", "DELETE": "DELETE", "HEAD": "HEAD", "OPTIONS": "OPTIONS",
+	"Any": "ANY", "ANY": "ANY", "CONNECT": "CONNECT", "TRACE": "TRACE",
 }
 
 type routerState struct {
@@ -174,6 +175,14 @@ func (c *collector) call(call *ast.CallExpr, env map[types.Object]*routerState) 
 			}
 		}
 	}
+	if state.framework == "echo" {
+		handlerIndex = 1
+		for _, arg := range call.Args[2:] {
+			if name := exprName(arg); name != "" {
+				middleware = append(middleware, Middleware{Name: name})
+			}
+		}
+	}
 	c.add(method, joinRoute(state.prefix, routePath), state.framework, call.Args[handlerIndex], middleware, call)
 }
 
@@ -219,6 +228,9 @@ func (c *collector) state(expr ast.Expr, env map[types.Object]*routerState) *rou
 		if p == "github.com/gin-gonic/gin.New" || p == "github.com/gin-gonic/gin.Default" {
 			return &routerState{framework: "gin"}
 		}
+		if p == "github.com/labstack/echo/v4.New" {
+			return &routerState{framework: "echo"}
+		}
 		sel, ok := x.Fun.(*ast.SelectorExpr)
 		if !ok {
 			return nil
@@ -237,7 +249,7 @@ func (c *collector) state(expr ast.Expr, env map[types.Object]*routerState) *rou
 			}
 			return child
 		case "Group":
-			if base.framework != "gin" || len(x.Args) == 0 {
+			if (base.framework != "gin" && base.framework != "echo") || len(x.Args) == 0 {
 				return nil
 			}
 			prefix, ok := stringValue(x.Args[0])

@@ -9,9 +9,9 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-var stateChangingGETMeta = Metadata{ID: "WEBVET-ROUTE-001", Name: "State-changing GET route", Description: "GET handler performs an obvious mutation", Severity: report.Medium, CWE: "CWE-749", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi"}}
-var sensitiveRouteMeta = Metadata{ID: "WEBVET-ROUTE-002", Name: "Unprotected sensitive route", Description: "sensitive endpoint has no detected route middleware", Severity: report.Medium, CWE: "CWE-306", Confidence: report.ConfidenceLow, Frameworks: []string{"gin", "chi"}}
-var csrfRouteMeta = Metadata{ID: "WEBVET-ROUTE-003", Name: "Cookie-authenticated route missing CSRF middleware", Description: "state-changing cookie-authenticated route has no recognized CSRF middleware", Severity: report.High, CWE: "CWE-352", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi"}}
+var stateChangingGETMeta = Metadata{ID: "WEBVET-ROUTE-001", Name: "State-changing GET route", Description: "GET handler performs an obvious mutation", Severity: report.Medium, CWE: "CWE-749", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo"}}
+var sensitiveRouteMeta = Metadata{ID: "WEBVET-ROUTE-002", Name: "Unprotected sensitive route", Description: "sensitive endpoint has no detected route middleware", Severity: report.Medium, CWE: "CWE-306", Confidence: report.ConfidenceLow, Frameworks: []string{"gin", "chi", "echo"}}
+var csrfRouteMeta = Metadata{ID: "WEBVET-ROUTE-003", Name: "Cookie-authenticated route missing CSRF middleware", Description: "state-changing cookie-authenticated route has no recognized CSRF middleware", Severity: report.High, CWE: "CWE-352", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo"}}
 
 func CheckSensitiveRoutes(routes []route.Route) []report.Finding {
 	var out []report.Finding

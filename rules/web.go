@@ -9,7 +9,7 @@ import (
 )
 
 func securityHeadersRule() Rule {
-	m := Metadata{ID: "WEBVET-HEADER-001", Name: "HTML response lacks browser security headers", Description: "explicit HTML response has no detected CSP or frame policy", Severity: report.Low, CWE: "CWE-693", Confidence: report.ConfidenceLow, Frameworks: []string{"net/http", "gin", "chi"}}
+	m := Metadata{ID: "WEBVET-HEADER-001", Name: "HTML response lacks browser security headers", Description: "explicit HTML response has no detected CSP or frame policy", Severity: report.Low, CWE: "CWE-693", Confidence: report.ConfidenceLow, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		for _, decl := range c.File.Decls {
@@ -61,7 +61,7 @@ func headerSet(c *Context, call *ast.CallExpr) (string, string, bool) {
 }
 
 func bodyLimitRule() Rule {
-	m := Metadata{ID: "WEBVET-BODY-001", Name: "Unbounded request body read", Description: "request body read without MaxBytesReader", Severity: report.Medium, CWE: "CWE-400", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "chi"}}
+	m := Metadata{ID: "WEBVET-BODY-001", Name: "Unbounded request body read", Description: "request body read without MaxBytesReader", Severity: report.Medium, CWE: "CWE-400", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "chi", "echo"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		for _, decl := range c.File.Decls {
@@ -104,7 +104,7 @@ func requestBody(c *Context, e ast.Expr) bool {
 }
 
 func redirectRule() Rule {
-	m := Metadata{ID: "WEBVET-REDIRECT-001", Name: "Untrusted redirect target", Description: "HTTP input flows to a redirect target", Severity: report.High, CWE: "CWE-601", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi"}}
+	m := Metadata{ID: "WEBVET-REDIRECT-001", Name: "Untrusted redirect target", Description: "HTTP input flows to a redirect target", Severity: report.High, CWE: "CWE-601", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		for _, decl := range c.File.Decls {
@@ -122,7 +122,7 @@ func redirectRule() Rule {
 				p := callPath(c.Types, call)
 				if p == "net/http.Redirect" && len(call.Args) >= 3 {
 					index = 2
-				} else if isGinRedirect(c, call) && len(call.Args) >= 2 {
+				} else if isFrameworkRedirect(c, call) && len(call.Args) >= 2 {
 					index = 1
 				}
 				if index >= 0 && exprTainted(c, call.Args[index], tainted) {
@@ -134,13 +134,17 @@ func redirectRule() Rule {
 		return out
 	}}
 }
-func isGinRedirect(c *Context, call *ast.CallExpr) bool {
+func isFrameworkRedirect(c *Context, call *ast.CallExpr) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok || sel.Sel.Name != "Redirect" {
 		return false
 	}
 	obj := c.Types.Uses[sel.Sel]
-	return obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == "github.com/gin-gonic/gin"
+	if obj == nil || obj.Pkg() == nil {
+		return false
+	}
+	p := obj.Pkg().Path()
+	return p == "github.com/gin-gonic/gin" || p == "github.com/labstack/echo/v4"
 }
 
 func stringContainsSQLMutation(lit *ast.BasicLit) bool {

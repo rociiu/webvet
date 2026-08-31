@@ -50,6 +50,7 @@ enable: []
 - `net/http`: server, cookie, pprof, and template checks
 - Chi v5: static method/path/handler extraction and `With` middleware chains
 - Gin: static route extraction, inline middleware, trusted-proxy checks, and request sources
+- Echo v4: static routes, groups, inherited/inline middleware, request sources, and redirects
 
 Dynamic paths, router aliases passed through arbitrary functions, cross-package
 taint, and network-level controls are intentionally not guessed.
@@ -92,7 +93,7 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are Echo and Fiber adapters, templ awareness, richer
+Next priorities are Fiber support, templ awareness, richer
 cross-package taint summaries, and authorization-property modeling.
 
 ## Contributing

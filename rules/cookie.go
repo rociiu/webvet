@@ -7,9 +7,9 @@ import (
 	"github.com/rociiu/webvet/report"
 )
 
-var cookieHTTPOnlyMeta = Metadata{ID: "WEBVET-COOKIE-001", Name: "Sensitive cookie missing HttpOnly", Description: "sensitive cookie missing HttpOnly", Severity: report.High, CWE: "CWE-1004", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi"}}
-var cookieSecureMeta = Metadata{ID: "WEBVET-COOKIE-002", Name: "Sensitive cookie missing Secure", Description: "sensitive cookie missing Secure", Severity: report.High, CWE: "CWE-614", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi"}}
-var cookieSameSiteMeta = Metadata{ID: "WEBVET-COOKIE-003", Name: "SameSite=None cookie missing Secure", Description: "SameSite=None cookie missing Secure", Severity: report.High, CWE: "CWE-1275", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi"}}
+var cookieHTTPOnlyMeta = Metadata{ID: "WEBVET-COOKIE-001", Name: "Sensitive cookie missing HttpOnly", Description: "sensitive cookie missing HttpOnly", Severity: report.High, CWE: "CWE-1004", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
+var cookieSecureMeta = Metadata{ID: "WEBVET-COOKIE-002", Name: "Sensitive cookie missing Secure", Description: "sensitive cookie missing Secure", Severity: report.High, CWE: "CWE-614", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
+var cookieSameSiteMeta = Metadata{ID: "WEBVET-COOKIE-003", Name: "SameSite=None cookie missing Secure", Description: "SameSite=None cookie missing Secure", Severity: report.High, CWE: "CWE-1275", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
 
 func cookieHTTPOnlyRule() Rule { return cookieRule(cookieHTTPOnlyMeta, "httponly") }
 func cookieSecureRule() Rule   { return cookieRule(cookieSecureMeta, "secure") }

@@ -17,6 +17,7 @@ func Detect(p *packages.Package) []string {
 		importFramework{"net/http", "net/http"},
 		importFramework{"gin", "github.com/gin-gonic/gin"},
 		importFramework{"chi", "github.com/go-chi/chi/v5"},
+		importFramework{"echo", "github.com/labstack/echo/v4"},
 	}
 	var names []string
 	for _, f := range known {
