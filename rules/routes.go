@@ -69,27 +69,48 @@ func CheckStateChangingGET(pkg *packages.Package, routes []route.Route) []report
 	return out
 }
 
-func CheckCSRF(pkg *packages.Package, routes []route.Route) []report.Finding {
+func CheckCSRF(routes []route.Route) []report.Finding {
 	var out []report.Finding
 	for _, r := range routes {
 		if r.Method != "POST" && r.Method != "PUT" && r.Method != "PATCH" && r.Method != "DELETE" {
 			continue
 		}
-		csrf, cookieAuth := false, false
-		for _, mw := range r.Middleware {
-			name := strings.ToLower(mw.Name)
-			if strings.Contains(name, "csrf") {
-				csrf = true
-			}
-			if fn := functionByName(pkg, mw.Name); fn != nil && functionUsesRequestCookie(pkg, fn) {
-				cookieAuth = true
-			}
-		}
-		if cookieAuth && !csrf {
+		if r.Security.CookieAuth.Detected && !r.Security.CSRF.Detected {
 			out = append(out, routeFinding(r, csrfRouteMeta, "Cookie-authenticated state-changing route has no recognized CSRF middleware.", "The attached middleware reads an HTTP cookie, but no route-level CSRF protection was detected.", "Attach a well-reviewed CSRF middleware and validate tokens for unsafe HTTP methods."))
 		}
 	}
 	return out
+}
+
+func EnrichRouteSecurity(pkg *packages.Package, routes []route.Route) []route.Route {
+	for i := range routes {
+		for _, mw := range routes[i].Middleware {
+			name := strings.ToLower(mw.Name)
+			if middlewareLooksAuth(name) {
+				markProperty(&routes[i].Security.Auth, mw.Name)
+			}
+			if strings.Contains(name, "csrf") || strings.Contains(name, "crossoriginprotection") {
+				markProperty(&routes[i].Security.CSRF, mw.Name)
+			}
+			if fn := functionByName(pkg, mw.Name); fn != nil && functionUsesRequestCookie(pkg, fn) {
+				markProperty(&routes[i].Security.Auth, mw.Name)
+				markProperty(&routes[i].Security.CookieAuth, mw.Name)
+			}
+		}
+	}
+	return routes
+}
+func middlewareLooksAuth(name string) bool {
+	return strings.Contains(name, "auth") || strings.Contains(name, "session") || strings.Contains(name, "jwt") || strings.Contains(name, "requirelogin") || strings.Contains(name, "require_login")
+}
+func markProperty(property *route.Property, evidence string) {
+	property.Detected = true
+	for _, item := range property.Evidence {
+		if item == evidence {
+			return
+		}
+	}
+	property.Evidence = append(property.Evidence, evidence)
 }
 
 func functionByName(pkg *packages.Package, name string) *ast.FuncDecl {

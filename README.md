@@ -25,6 +25,9 @@ webvet routes ./...
 webvet rules
 ```
 
+Route inventory includes inherited middleware plus detected `AUTH` and `CSRF`
+properties, with structured evidence available in the route model.
+
 Findings make the certainty explicit and include an explanation and suggested
 fix. Exit status is 0 for a clean scan, 1 for findings at the selected severity,
 and 2 for scanner or configuration errors.

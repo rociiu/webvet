@@ -83,7 +83,7 @@ func Run(patterns []string, opts Options) (Result, error) {
 }
 
 func analyzePackage(pkg *packages.Package, opts Options) Result {
-	routes := route.Collect(pkg)
+	routes := rules.EnrichRouteSecurity(pkg, route.Collect(pkg))
 	out := Result{Routes: routes}
 	if opts.RoutesOnly {
 		return out
@@ -120,7 +120,7 @@ func analyzePackage(pkg *packages.Package, opts Options) Result {
 		}
 	}
 	if !opts.Disabled["WEBVET-ROUTE-003"] || opts.Enabled["WEBVET-ROUTE-003"] {
-		for _, finding := range rules.CheckCSRF(pkg, routes) {
+		for _, finding := range rules.CheckCSRF(routes) {
 			if !suppressedInPackage(pkg, finding) {
 				out.Findings = append(out.Findings, finding)
 			}

@@ -119,7 +119,7 @@ func runRoutes(args []string) int {
 		return 2
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "METHOD\tROUTE\tFRAMEWORK\tHANDLER\tMIDDLEWARE")
+	fmt.Fprintln(w, "METHOD\tROUTE\tFRAMEWORK\tHANDLER\tMIDDLEWARE\tAUTH\tCSRF")
 	for _, r := range result.Routes {
 		m := make([]string, len(r.Middleware))
 		for i, x := range r.Middleware {
@@ -128,10 +128,16 @@ func runRoutes(args []string) int {
 		if len(m) == 0 {
 			m = []string{"-"}
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.Method, r.Path, r.Framework, r.Handler, strings.Join(m, ", "))
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Method, r.Path, r.Framework, r.Handler, strings.Join(m, ", "), detected(r.Security.Auth.Detected), detected(r.Security.CSRF.Detected))
 	}
 	w.Flush()
 	return 0
+}
+func detected(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "-"
 }
 func printRules() int {
 	m := rules.MetadataList()

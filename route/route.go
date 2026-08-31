@@ -13,4 +13,16 @@ type Route struct {
 	Middleware []Middleware   `json:"middleware,omitempty"`
 	Framework  string         `json:"framework"`
 	Position   token.Position `json:"position"`
+	Security   Security       `json:"security"`
+}
+
+type Security struct {
+	Auth       Property `json:"auth"`
+	CookieAuth Property `json:"cookie_auth"`
+	CSRF       Property `json:"csrf"`
+}
+
+type Property struct {
+	Detected bool     `json:"detected"`
+	Evidence []string `json:"evidence,omitempty"`
 }
