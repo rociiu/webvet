@@ -1,0 +1,88 @@
+# webvet
+
+Static security analysis for Go web applications.
+
+`webvet` understands routes, middleware, HTTP configuration, cookies,
+templates, and web-framework semantics that generic Go linters often cannot
+see. Version 0.1 favors a small number of explainable, high-confidence checks.
+
+## Install
+
+```sh
+go install github.com/webvet/webvet/cmd/webvet@latest
+```
+
+The module path is isolated to `go.mod` and internal imports, so a future owner
+rename is a mechanical change.
+
+## Quick start
+
+```sh
+webvet ./...
+webvet -severity high -format json ./...
+webvet routes ./...
+webvet rules
+```
+
+Findings make the certainty explicit and include an explanation and suggested
+fix. Exit status is 0 for a clean scan, 1 for findings at the selected severity,
+and 2 for scanner or configuration errors.
+
+Local suppressions require a rule and reason:
+
+```go
+//webvet:ignore WEBVET-HTTP-001 -- timeout enforced by the private ingress
+srv := &http.Server{Addr: ":8080"}
+```
+
+## Supported frameworks
+
+- `net/http`: server, cookie, pprof, and template checks
+- Chi v5: static method/path/handler extraction and `With` middleware chains
+- Gin: static route extraction, inline middleware, trusted-proxy checks, and request sources
+
+Dynamic paths, router aliases passed through arbitrary functions, cross-package
+taint, and network-level controls are intentionally not guessed.
+
+## Rules
+
+| Rule | Severity | Purpose |
+|---|---:|---|
+| WEBVET-HTTP-001 | Medium | `http.Server` missing `ReadHeaderTimeout` |
+| WEBVET-HTTP-002 | High | pprof exposed through the default server |
+| WEBVET-COOKIE-001 | High | sensitive cookie missing `HttpOnly` |
+| WEBVET-COOKIE-002 | High | sensitive cookie missing `Secure` |
+| WEBVET-COOKIE-003 | High | `SameSite=None` without `Secure` |
+| WEBVET-CORS-001 | High | credentialed wildcard CORS |
+| WEBVET-GIN-001 | High | unrestricted Gin trusted proxies |
+| WEBVET-TEMPLATE-001 | High | request input converted to trusted template content |
+| WEBVET-ROUTE-002 | Medium | sensitive route has no detected route middleware |
+
+## Architecture
+
+The CLI loads each package once with `go/packages`. Typed AST information is
+shared by a small rule registry and the route collector. A `go/analysis`
+adapter supports `analysistest` and future linter integrations. Findings and
+routes are deterministic intermediate models; text and JSON are presentation
+layers.
+
+## Why not gosec?
+
+gosec is an excellent general-purpose Go security scanner. webvet focuses
+specifically on web application semantics such as routes, middleware chains,
+framework configuration, browser security policies, and template rendering.
+The projects are complementary.
+
+## Roadmap
+
+Next priorities are CSRF middleware propagation, security-header policy,
+production server write/idle timeout checks, upload-size limits, and safe
+redirect analysis. Echo, Fiber, templ, SARIF, and cross-package taint are later
+milestones.
+
+## Contributing
+
+Run `go test ./...` and `go vet ./...`. New checks should include positive,
+negative, and edge cases and should prefer silence over an uncertain claim.
+
+Licensed under the MIT License.
