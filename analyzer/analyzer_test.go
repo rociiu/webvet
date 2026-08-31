@@ -134,3 +134,42 @@ func TestRouteSecurityProperties(t *testing.T) {
 		t.Fatalf("CSRF findings=%d, want 1", count)
 	}
 }
+
+func TestRouteAuthorizationProperties(t *testing.T) {
+	t.Parallel()
+	_, here, _, _ := runtime.Caller(0)
+	root := filepath.Dir(filepath.Dir(here))
+	result, err := analyzer.Run([]string{"./testdata/projects/securityroutes"}, analyzer.Options{Dir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantProtected := map[string]bool{
+		"chi /admin/safe":        false,
+		"chi /admin/body-policy": false,
+	}
+	for _, r := range result.Routes {
+		key := r.Framework + " " + r.Path
+		if _, ok := wantProtected[key]; ok && r.Security.Authorization.Detected {
+			wantProtected[key] = true
+		}
+	}
+	for key, detected := range wantProtected {
+		if !detected {
+			t.Errorf("authorization not detected for %s", key)
+		}
+	}
+
+	findings := 0
+	for _, f := range result.Findings {
+		if f.RuleID == "WEBVET-ROUTE-004" {
+			findings++
+			if f.Route != "GET /admin/missing" {
+				t.Errorf("unexpected authorization finding: %+v", f)
+			}
+		}
+	}
+	if findings != 1 {
+		t.Fatalf("authorization findings=%d, want 1", findings)
+	}
+}

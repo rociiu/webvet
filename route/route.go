@@ -17,9 +17,10 @@ type Route struct {
 }
 
 type Security struct {
-	Auth       Property `json:"auth"`
-	CookieAuth Property `json:"cookie_auth"`
-	CSRF       Property `json:"csrf"`
+	Auth          Property `json:"auth"`
+	Authorization Property `json:"authorization"`
+	CookieAuth    Property `json:"cookie_auth"`
+	CSRF          Property `json:"csrf"`
 }
 
 type Property struct {

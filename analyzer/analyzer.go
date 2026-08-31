@@ -126,6 +126,13 @@ func analyzePackage(pkg *packages.Package, opts Options) Result {
 			}
 		}
 	}
+	if !opts.Disabled["WEBVET-ROUTE-004"] || opts.Enabled["WEBVET-ROUTE-004"] {
+		for _, finding := range rules.CheckAuthorization(routes) {
+			if !suppressedInPackage(pkg, finding) {
+				out.Findings = append(out.Findings, finding)
+			}
+		}
+	}
 	return out
 }
 

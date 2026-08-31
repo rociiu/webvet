@@ -94,6 +94,7 @@ func deleteUser(*gin.Context)   { db.Delete("user") }
 func updateUser(*gin.Context)   {}
 func cookieAuth(c *gin.Context) { _, _ = c.Request.Cookie("session") }
 func csrf(*gin.Context)         {}
+func requireRole(*gin.Context)  {}
 
 func ginRoutes() {
 	r := gin.New()
@@ -101,7 +102,8 @@ func ginRoutes() {
 	r.POST("/profile", updateUser)    // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
 	r.GET("/delete-user", deleteUser) // want `GET handler performs an obvious state mutation`
 	admin := r.Group("/admin", csrf)
-	admin.POST("/profile", updateUser)
+	admin.POST("/profile", updateUser) // want `Authenticated admin route has no recognized authorization middleware`
+	admin.POST("/settings", requireRole, updateUser)
 }
 
 func echoUpdate(*echo.Context) error { return nil }
@@ -109,7 +111,8 @@ func echoDelete(*echo.Context) error { db.Delete("user"); return nil }
 func echoCookieAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error { _, _ = c.Request().Cookie("session"); return next(c) }
 }
-func echoCSRF(next echo.HandlerFunc) echo.HandlerFunc { return next }
+func echoCSRF(next echo.HandlerFunc) echo.HandlerFunc              { return next }
+func echoRequirePermission(next echo.HandlerFunc) echo.HandlerFunc { return next }
 func echoUnsafeTemplate(c *echo.Context) template.HTML {
 	bio := c.FormValue("bio")
 	return template.HTML(bio) // want `User-controlled HTTP input is converted to template.HTML`
@@ -125,13 +128,15 @@ func echoRoutes() {
 	e.GET("/delete", echoDelete)                   // want `GET handler performs an obvious state mutation`
 	e.GET("/debug", echoUpdate)                    // want `No route-level middleware was detected for sensitive endpoint /debug`
 	admin := e.Group("/admin", echoCookieAuth, echoCSRF)
-	admin.POST("/profile", echoUpdate)
+	admin.POST("/profile", echoUpdate) // want `Authenticated admin route has no recognized authorization middleware`
+	admin.POST("/settings", echoUpdate, echoRequirePermission)
 }
 
 func fiber2Update(*fiber2.Ctx) error       { return nil }
 func fiber2Delete(*fiber2.Ctx) error       { db.Delete("user"); return nil }
 func fiber2CookieAuth(c *fiber2.Ctx) error { _ = c.Cookies("session"); return nil }
 func fiber2CSRF(*fiber2.Ctx) error         { return nil }
+func fiber2RequireScope(*fiber2.Ctx) error { return nil }
 func fiber2UnsafeTemplate(c *fiber2.Ctx) template.HTML {
 	value := c.FormValue("bio")
 	return template.HTML(value) // want `User-controlled HTTP input is converted to template.HTML`
@@ -147,13 +152,16 @@ func fiber2Routes() {
 	app.Get("/delete", fiber2Delete) // want `GET handler performs an obvious state mutation`
 	app.Get("/debug", fiber2Update)  // want `No route-level middleware was detected for sensitive endpoint /debug`
 	admin := app.Group("/admin", fiber2CookieAuth, fiber2CSRF)
-	admin.Post("/profile", fiber2Update)
+	admin.Post("/profile", fiber2Update) // want `Authenticated admin route has no recognized authorization middleware`
+	admin.Post("/settings", fiber2RequireScope, fiber2Update)
 	v1 := admin.Group("/v1", fiber2CSRF)
-	v1.Get("/status", fiber2Update)
+	v1.Get("/status", fiber2Update) // want `Authenticated admin route has no recognized authorization middleware`
+	v1.Get("/audit", fiber2RequireScope, fiber2Update)
 }
 
 func fiber3Update(fiber3.Ctx) error       { return nil }
 func fiber3CookieAuth(c fiber3.Ctx) error { _ = c.Cookies("session"); return nil }
+func fiber3RequireRole(fiber3.Ctx) error  { return nil }
 func fiber3UnsafeTemplate(c fiber3.Ctx) template.HTML {
 	value := c.Params("value")
 	return template.HTML(value) // want `User-controlled HTTP input is converted to template.HTML`
@@ -166,7 +174,9 @@ func fiber3Redirect(c fiber3.Ctx) error {
 func fiber3Routes() {
 	app := fiber3.New()
 	app.Use(fiber3CookieAuth)
-	app.Post("/profile", fiber3Update) // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
+	app.Post("/profile", fiber3Update)      // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
+	app.Get("/admin/profile", fiber3Update) // want `Authenticated admin route has no recognized authorization middleware`
+	app.Get("/admin/settings", fiber3RequireRole, fiber3Update)
 }
 
 func unsafeTemplRaw(r *http.Request) templ.Component {

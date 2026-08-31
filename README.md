@@ -25,8 +25,9 @@ webvet routes ./...
 webvet rules
 ```
 
-Route inventory includes inherited middleware plus detected `AUTH` and `CSRF`
-properties, with structured evidence available in the route model.
+Route inventory includes inherited middleware plus detected authentication,
+authorization, cookie-authentication, and CSRF properties, with structured
+evidence available in the route model.
 
 Findings make the certainty explicit and include an explanation and suggested
 fix. Exit status is 0 for a clean scan, 1 for findings at the selected severity,
@@ -85,6 +86,7 @@ separately.
 | WEBVET-ROUTE-001 | Medium | GET handler performs an obvious mutation |
 | WEBVET-ROUTE-002 | Medium | sensitive route has no detected route middleware |
 | WEBVET-ROUTE-003 | High | cookie-authenticated unsafe method lacks detected CSRF middleware |
+| WEBVET-ROUTE-004 | High | authenticated admin route lacks detected authorization middleware |
 
 ## Architecture
 
@@ -103,8 +105,8 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are authorization-property modeling and SSA-backed summaries
-for more complex cross-package data flow.
+Next priorities are SSA-backed summaries for more complex cross-package data
+flow and broader typed middleware semantics.
 
 ## Contributing
 

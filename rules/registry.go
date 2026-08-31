@@ -27,10 +27,10 @@ func KnownIDs() map[string]bool {
 }
 func MetadataList() []Metadata {
 	rs := Default()
-	out := make([]Metadata, 0, len(rs)+3)
+	out := make([]Metadata, 0, len(rs)+4)
 	for _, r := range rs {
 		out = append(out, r.Meta())
 	}
-	out = append(out, stateChangingGETMeta, sensitiveRouteMeta, csrfRouteMeta)
+	out = append(out, stateChangingGETMeta, sensitiveRouteMeta, csrfRouteMeta, authorizationRouteMeta)
 	return out
 }
