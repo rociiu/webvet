@@ -52,6 +52,7 @@ enable: []
 - Gin: static route extraction, inline middleware, trusted-proxy checks, and request sources
 - Echo v4: static routes, groups, inherited/inline middleware, request sources, and redirects
 - Fiber v2/v3: routes, nested groups, prefix middleware, request sources, and version-specific redirects
+- templ: request-taint checks for explicit HTML, URL, CSS, and JavaScript sanitization bypasses
 
 Dynamic paths, router aliases passed through arbitrary functions, cross-package
 taint, and network-level controls are intentionally not guessed. Fiber v2 and
@@ -72,6 +73,8 @@ separately.
 | WEBVET-CORS-001 | High | credentialed wildcard CORS |
 | WEBVET-GIN-001 | High | unrestricted Gin trusted proxies |
 | WEBVET-TEMPLATE-001 | High | request input converted to trusted template content |
+| WEBVET-TEMPL-001 | High | request input passed to `templ.Raw` |
+| WEBVET-TEMPL-002 | High | request input marked safe for templ URL/CSS/JavaScript output |
 | WEBVET-HEADER-001 | Low | explicit HTML response lacks a detected browser policy |
 | WEBVET-BODY-001 | Medium | request body read without a size limit |
 | WEBVET-REDIRECT-001 | High | request input used as a redirect target |
@@ -96,8 +99,8 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are templ awareness, richer
-cross-package taint summaries, and authorization-property modeling.
+Next priorities are richer cross-package taint summaries and
+authorization-property modeling.
 
 ## Contributing
 

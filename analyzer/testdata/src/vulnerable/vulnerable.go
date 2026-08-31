@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof" // want `pprof is registered on an exposed default HTTP server`
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 	fiber2 "github.com/gofiber/fiber/v2"
 	fiber3 "github.com/gofiber/fiber/v3"
@@ -167,3 +168,15 @@ func fiber3Routes() {
 	app.Use(fiber3CookieAuth)
 	app.Post("/profile", fiber3Update) // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
 }
+
+func unsafeTemplRaw(r *http.Request) templ.Component {
+	value := r.FormValue("html")
+	return templ.Raw(value) // want `User-controlled HTTP input is passed to templ.Raw`
+}
+func unsafeTemplURL(r *http.Request) templ.SafeURL {
+	value := r.FormValue("url")
+	return templ.SafeURL(value) // want `User-controlled HTTP input is marked safe for templ output`
+}
+func unsafeTemplCSS(r *http.Request) templ.SafeCSS  { return templ.SafeCSS(r.FormValue("css")) }         // want `User-controlled HTTP input is marked safe for templ output`
+func unsafeTemplJS(r *http.Request) templ.Component { return templ.JSUnsafeFuncCall(r.FormValue("js")) } // want `User-controlled HTTP input is marked safe for templ output`
+func safeTemplRaw() templ.Component                 { return templ.Raw("<strong>trusted constant</strong>") }

@@ -3,7 +3,7 @@ package rules
 import "fmt"
 
 func Default() []Rule {
-	return []Rule{httpTimeoutRule(), pprofRule(), writeTimeoutRule(), idleTimeoutRule(), cookieHTTPOnlyRule(), cookieSecureRule(), cookieSameSiteRule(), corsRule(), ginProxyRule(), templateRule(), securityHeadersRule(), bodyLimitRule(), redirectRule()}
+	return []Rule{httpTimeoutRule(), pprofRule(), writeTimeoutRule(), idleTimeoutRule(), cookieHTTPOnlyRule(), cookieSecureRule(), cookieSameSiteRule(), corsRule(), ginProxyRule(), templateRule(), templRawRule(), templContextRule(), securityHeadersRule(), bodyLimitRule(), redirectRule()}
 }
 func Validate() error {
 	seen := map[string]bool{}

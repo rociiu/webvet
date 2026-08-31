@@ -20,6 +20,7 @@ func Detect(p *packages.Package) []string {
 		importFramework{"echo", "github.com/labstack/echo/v4"},
 		importFramework{"fiber", "github.com/gofiber/fiber/v2"},
 		importFramework{"fiber", "github.com/gofiber/fiber/v3"},
+		importFramework{"templ", "github.com/a-h/templ"},
 	}
 	var names []string
 	seen := map[string]bool{}
