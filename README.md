@@ -106,7 +106,8 @@ The projects are complementary.
 ## Roadmap
 
 Next priorities are SSA-backed summaries for more complex cross-package data
-flow and broader typed middleware semantics.
+flow and broader typed middleware semantics. The full prioritized work list is
+tracked in the [project readiness checklist](docs/READINESS-CHECKLIST.md).
 
 ## Contributing
 
