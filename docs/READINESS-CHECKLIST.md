@@ -6,12 +6,12 @@ required CI security gate.
 
 ## P0 — Publish a usable package
 
-- [ ] Create the public `github.com/rociiu/webvet` repository.
-- [ ] Add the GitHub repository as the Git remote and push `main`.
-- [ ] Confirm `go install github.com/rociiu/webvet/cmd/webvet@latest` works from a clean environment.
+- [x] Create the public `github.com/rociiu/webvet` repository.
+- [x] Add the GitHub repository as the Git remote and push `main`.
+- [x] Confirm `go install github.com/rociiu/webvet/cmd/webvet@latest` works from a clean environment.
 - [ ] Create and push a semantic version tag, starting with `v0.1.0` when the release criteria below pass.
-- [ ] Add a GitHub Actions release workflow that runs GoReleaser for version tags.
-- [ ] Verify Linux, macOS, and Windows archives and checksums from a test release.
+- [x] Add a GitHub Actions release workflow that runs GoReleaser for version tags.
+- [x] Verify Linux, macOS, and Windows archives and checksums from a snapshot release.
 
 ## P1 — Close correctness gaps
 
