@@ -15,16 +15,27 @@ var routeMethods = map[string]string{
 	"Get": "GET", "Post": "POST", "Put": "PUT", "Patch": "PATCH", "Delete": "DELETE", "Head": "HEAD", "Options": "OPTIONS",
 	"GET": "GET", "POST": "POST", "PUT": "PUT", "PATCH": "PATCH", "DELETE": "DELETE", "HEAD": "HEAD", "OPTIONS": "OPTIONS",
 	"Any": "ANY", "ANY": "ANY", "CONNECT": "CONNECT", "TRACE": "TRACE",
+	"All": "ANY",
+}
+
+type scopedMiddleware struct {
+	prefix     string
+	middleware []Middleware
 }
 
 type routerState struct {
 	framework  string
 	prefix     string
 	middleware []Middleware
+	scoped     []scopedMiddleware
 }
 
 func (s *routerState) clone() *routerState {
-	return &routerState{framework: s.framework, prefix: s.prefix, middleware: append([]Middleware(nil), s.middleware...)}
+	copyState := &routerState{framework: s.framework, prefix: s.prefix, middleware: append([]Middleware(nil), s.middleware...)}
+	for _, item := range s.scoped {
+		copyState.scoped = append(copyState.scoped, scopedMiddleware{prefix: item.prefix, middleware: append([]Middleware(nil), item.middleware...)})
+	}
+	return copyState
 }
 
 type collector struct {
@@ -147,7 +158,20 @@ func (c *collector) call(call *ast.CallExpr, env map[types.Object]*routerState) 
 		return
 	}
 	if sel.Sel.Name == "Use" {
-		for _, arg := range call.Args {
+		start := 0
+		if state.framework == "fiber" && len(call.Args) > 1 {
+			if prefix, ok := stringValue(call.Args[0]); ok {
+				var scoped []Middleware
+				for _, arg := range call.Args[1:] {
+					if name := exprName(arg); name != "" {
+						scoped = append(scoped, Middleware{Name: name})
+					}
+				}
+				state.scoped = append(state.scoped, scopedMiddleware{prefix: joinRoute(state.prefix, prefix), middleware: scoped})
+				return
+			}
+		}
+		for _, arg := range call.Args[start:] {
 			if name := exprName(arg); name != "" {
 				state.middleware = append(state.middleware, Middleware{Name: name})
 			}
@@ -158,6 +182,28 @@ func (c *collector) call(call *ast.CallExpr, env map[types.Object]*routerState) 
 		c.chiGroup(state, sel.Sel.Name, call, env)
 		return
 	}
+	if state.framework == "fiber" && sel.Sel.Name == "Add" && len(call.Args) >= 3 {
+		method, mok := stringValue(call.Args[0])
+		routePath, pok := stringValue(call.Args[1])
+		if !mok || !pok {
+			return
+		}
+		method = strings.ToUpper(method)
+		fullPath := joinRoute(state.prefix, routePath)
+		middleware := append([]Middleware(nil), state.middleware...)
+		for _, item := range state.scoped {
+			if routeHasPrefix(fullPath, item.prefix) {
+				middleware = append(middleware, item.middleware...)
+			}
+		}
+		for _, arg := range call.Args[2 : len(call.Args)-1] {
+			if name := exprName(arg); name != "" {
+				middleware = append(middleware, Middleware{Name: name})
+			}
+		}
+		c.add(method, fullPath, state.framework, call.Args[len(call.Args)-1], middleware, call)
+		return
+	}
 	method, ok := routeMethods[sel.Sel.Name]
 	if !ok || len(call.Args) < 2 {
 		return
@@ -166,9 +212,15 @@ func (c *collector) call(call *ast.CallExpr, env map[types.Object]*routerState) 
 	if !ok {
 		return
 	}
+	fullPath := joinRoute(state.prefix, routePath)
 	handlerIndex := len(call.Args) - 1
 	middleware := append([]Middleware(nil), state.middleware...)
-	if state.framework == "gin" && handlerIndex > 1 {
+	for _, item := range state.scoped {
+		if routeHasPrefix(fullPath, item.prefix) {
+			middleware = append(middleware, item.middleware...)
+		}
+	}
+	if (state.framework == "gin" || state.framework == "fiber") && handlerIndex > 1 {
 		for _, arg := range call.Args[1:handlerIndex] {
 			if name := exprName(arg); name != "" {
 				middleware = append(middleware, Middleware{Name: name})
@@ -183,7 +235,7 @@ func (c *collector) call(call *ast.CallExpr, env map[types.Object]*routerState) 
 			}
 		}
 	}
-	c.add(method, joinRoute(state.prefix, routePath), state.framework, call.Args[handlerIndex], middleware, call)
+	c.add(method, fullPath, state.framework, call.Args[handlerIndex], middleware, call)
 }
 
 func (c *collector) chiGroup(parent *routerState, name string, call *ast.CallExpr, env map[types.Object]*routerState) {
@@ -231,6 +283,9 @@ func (c *collector) state(expr ast.Expr, env map[types.Object]*routerState) *rou
 		if p == "github.com/labstack/echo/v4.New" {
 			return &routerState{framework: "echo"}
 		}
+		if p == "github.com/gofiber/fiber/v2.New" || p == "github.com/gofiber/fiber/v3.New" {
+			return &routerState{framework: "fiber"}
+		}
 		sel, ok := x.Fun.(*ast.SelectorExpr)
 		if !ok {
 			return nil
@@ -249,7 +304,7 @@ func (c *collector) state(expr ast.Expr, env map[types.Object]*routerState) *rou
 			}
 			return child
 		case "Group":
-			if (base.framework != "gin" && base.framework != "echo") || len(x.Args) == 0 {
+			if (base.framework != "gin" && base.framework != "echo" && base.framework != "fiber") || len(x.Args) == 0 {
 				return nil
 			}
 			prefix, ok := stringValue(x.Args[0])
@@ -290,6 +345,13 @@ func joinRoute(prefix, suffix string) string {
 		return prefix
 	}
 	return strings.TrimSuffix(prefix, "/") + "/" + strings.TrimPrefix(suffix, "/")
+}
+func routeHasPrefix(routePath, prefix string) bool {
+	if prefix == "" || prefix == "/" {
+		return true
+	}
+	prefix = strings.TrimSuffix(prefix, "/")
+	return routePath == prefix || strings.HasPrefix(routePath, prefix+"/")
 }
 func selectorPackage(pkg *packages.Package, sel *ast.SelectorExpr) string {
 	obj := pkg.TypesInfo.Uses[sel.Sel]

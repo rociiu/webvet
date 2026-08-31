@@ -8,7 +8,7 @@ import (
 )
 
 func templateRule() Rule {
-	m := Metadata{ID: "WEBVET-TEMPLATE-001", Name: "Unsafe template content", Description: "untrusted HTTP input converted to a trusted html/template type", Severity: report.High, CWE: "CWE-79", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
+	m := Metadata{ID: "WEBVET-TEMPLATE-001", Name: "Unsafe template content", Description: "untrusted HTTP input converted to a trusted html/template type", Severity: report.High, CWE: "CWE-79", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo", "fiber"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		for _, decl := range c.File.Decls {
@@ -112,6 +112,9 @@ func isSourceCall(info *types.Info, call *ast.CallExpr) bool {
 		return true
 	}
 	if p == "github.com/labstack/echo/v4" && (n == "QueryParam" || n == "Param" || n == "FormValue") {
+		return true
+	}
+	if (p == "github.com/gofiber/fiber/v2" || p == "github.com/gofiber/fiber/v3") && (n == "Query" || n == "Params" || n == "FormValue" || n == "Get" || n == "Cookies") {
 		return true
 	}
 	return p == "github.com/gin-gonic/gin" && (n == "Query" || n == "Param" || n == "PostForm")

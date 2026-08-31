@@ -52,7 +52,7 @@ func headerSet(c *Context, call *ast.CallExpr) (string, string, bool) {
 		return "", "", false
 	}
 	obj := c.Types.Uses[sel.Sel]
-	if obj == nil || obj.Pkg() == nil || !((obj.Pkg().Path() == "net/http" && sel.Sel.Name == "Set") || (obj.Pkg().Path() == "github.com/gin-gonic/gin" && sel.Sel.Name == "Header")) {
+	if obj == nil || obj.Pkg() == nil || !((obj.Pkg().Path() == "net/http" && sel.Sel.Name == "Set") || (obj.Pkg().Path() == "github.com/gin-gonic/gin" && sel.Sel.Name == "Header") || ((obj.Pkg().Path() == "github.com/gofiber/fiber/v2" || obj.Pkg().Path() == "github.com/gofiber/fiber/v3") && sel.Sel.Name == "Set")) {
 		return "", "", false
 	}
 	k, kok := stringLiteral(call.Args[0])
@@ -104,7 +104,7 @@ func requestBody(c *Context, e ast.Expr) bool {
 }
 
 func redirectRule() Rule {
-	m := Metadata{ID: "WEBVET-REDIRECT-001", Name: "Untrusted redirect target", Description: "HTTP input flows to a redirect target", Severity: report.High, CWE: "CWE-601", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo"}}
+	m := Metadata{ID: "WEBVET-REDIRECT-001", Name: "Untrusted redirect target", Description: "HTTP input flows to a redirect target", Severity: report.High, CWE: "CWE-601", Confidence: report.ConfidenceHigh, Frameworks: []string{"net/http", "gin", "chi", "echo", "fiber"}}
 	return rule{m, func(c *Context) []report.Finding {
 		var out []report.Finding
 		for _, decl := range c.File.Decls {
@@ -122,8 +122,10 @@ func redirectRule() Rule {
 				p := callPath(c.Types, call)
 				if p == "net/http.Redirect" && len(call.Args) >= 3 {
 					index = 2
-				} else if isFrameworkRedirect(c, call) && len(call.Args) >= 2 {
+				} else if isGinEchoRedirect(c, call) && len(call.Args) >= 2 {
 					index = 1
+				} else if isFiberRedirect(c, call) && len(call.Args) >= 1 {
+					index = 0
 				}
 				if index >= 0 && exprTainted(c, call.Args[index], tainted) {
 					out = append(out, finding(c, call, m, "User-controlled HTTP input is used as a redirect target.", "An attacker may construct a trusted-looking URL that redirects users to an external site.", "Allowlist local paths or trusted origins before redirecting."))
@@ -134,7 +136,7 @@ func redirectRule() Rule {
 		return out
 	}}
 }
-func isFrameworkRedirect(c *Context, call *ast.CallExpr) bool {
+func isGinEchoRedirect(c *Context, call *ast.CallExpr) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok || sel.Sel.Name != "Redirect" {
 		return false
@@ -145,6 +147,22 @@ func isFrameworkRedirect(c *Context, call *ast.CallExpr) bool {
 	}
 	p := obj.Pkg().Path()
 	return p == "github.com/gin-gonic/gin" || p == "github.com/labstack/echo/v4"
+}
+
+func isFiberRedirect(c *Context, call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	obj := c.Types.Uses[sel.Sel]
+	if obj == nil || obj.Pkg() == nil {
+		return false
+	}
+	p := obj.Pkg().Path()
+	if p != "github.com/gofiber/fiber/v2" && p != "github.com/gofiber/fiber/v3" {
+		return false
+	}
+	return (p == "github.com/gofiber/fiber/v2" && sel.Sel.Name == "Redirect") || (p == "github.com/gofiber/fiber/v3" && (sel.Sel.Name == "To" || sel.Sel.Name == "Back"))
 }
 
 func stringContainsSQLMutation(lit *ast.BasicLit) bool {

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	fiber2 "github.com/gofiber/fiber/v2"
+	fiber3 "github.com/gofiber/fiber/v3"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/cors"
 )
@@ -123,4 +125,45 @@ func echoRoutes() {
 	e.GET("/debug", echoUpdate)                    // want `No route-level middleware was detected for sensitive endpoint /debug`
 	admin := e.Group("/admin", echoCookieAuth, echoCSRF)
 	admin.POST("/profile", echoUpdate)
+}
+
+func fiber2Update(*fiber2.Ctx) error       { return nil }
+func fiber2Delete(*fiber2.Ctx) error       { db.Delete("user"); return nil }
+func fiber2CookieAuth(c *fiber2.Ctx) error { _ = c.Cookies("session"); return nil }
+func fiber2CSRF(*fiber2.Ctx) error         { return nil }
+func fiber2UnsafeTemplate(c *fiber2.Ctx) template.HTML {
+	value := c.FormValue("bio")
+	return template.HTML(value) // want `User-controlled HTTP input is converted to template.HTML`
+}
+func fiber2Redirect(c *fiber2.Ctx) error { next := c.Query("next"); return c.Redirect(next) } // want `User-controlled HTTP input is used as a redirect target`
+
+func fiber2Routes() {
+	app := fiber2.New()
+	app.Use("/api", fiber2CookieAuth)
+	app.Post("/api/profile", fiber2Update) // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
+	app.Post("/public", fiber2Update)
+	app.Add("PUT", "/api/thing", fiber2CSRF, fiber2Update)
+	app.Get("/delete", fiber2Delete) // want `GET handler performs an obvious state mutation`
+	app.Get("/debug", fiber2Update)  // want `No route-level middleware was detected for sensitive endpoint /debug`
+	admin := app.Group("/admin", fiber2CookieAuth, fiber2CSRF)
+	admin.Post("/profile", fiber2Update)
+	v1 := admin.Group("/v1", fiber2CSRF)
+	v1.Get("/status", fiber2Update)
+}
+
+func fiber3Update(fiber3.Ctx) error       { return nil }
+func fiber3CookieAuth(c fiber3.Ctx) error { _ = c.Cookies("session"); return nil }
+func fiber3UnsafeTemplate(c fiber3.Ctx) template.HTML {
+	value := c.Params("value")
+	return template.HTML(value) // want `User-controlled HTTP input is converted to template.HTML`
+}
+func fiber3Redirect(c fiber3.Ctx) error {
+	next := c.Query("next")
+	return c.Redirect().Status(http.StatusFound).To(next) // want `User-controlled HTTP input is used as a redirect target`
+}
+
+func fiber3Routes() {
+	app := fiber3.New()
+	app.Use(fiber3CookieAuth)
+	app.Post("/profile", fiber3Update) // want `Cookie-authenticated state-changing route has no recognized CSRF middleware`
 }

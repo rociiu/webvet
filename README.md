@@ -51,9 +51,12 @@ enable: []
 - Chi v5: static method/path/handler extraction and `With` middleware chains
 - Gin: static route extraction, inline middleware, trusted-proxy checks, and request sources
 - Echo v4: static routes, groups, inherited/inline middleware, request sources, and redirects
+- Fiber v2/v3: routes, nested groups, prefix middleware, request sources, and version-specific redirects
 
 Dynamic paths, router aliases passed through arbitrary functions, cross-package
-taint, and network-level controls are intentionally not guessed.
+taint, and network-level controls are intentionally not guessed. Fiber v2 and
+v3 are both recognized; version-specific request and redirect APIs are handled
+separately.
 
 ## Rules
 
@@ -93,7 +96,7 @@ The projects are complementary.
 
 ## Roadmap
 
-Next priorities are Fiber support, templ awareness, richer
+Next priorities are templ awareness, richer
 cross-package taint summaries, and authorization-property modeling.
 
 ## Contributing

@@ -18,11 +18,15 @@ func Detect(p *packages.Package) []string {
 		importFramework{"gin", "github.com/gin-gonic/gin"},
 		importFramework{"chi", "github.com/go-chi/chi/v5"},
 		importFramework{"echo", "github.com/labstack/echo/v4"},
+		importFramework{"fiber", "github.com/gofiber/fiber/v2"},
+		importFramework{"fiber", "github.com/gofiber/fiber/v3"},
 	}
 	var names []string
+	seen := map[string]bool{}
 	for _, f := range known {
-		if f.Detect(p) {
+		if f.Detect(p) && !seen[f.Name()] {
 			names = append(names, f.Name())
+			seen[f.Name()] = true
 		}
 	}
 	return names

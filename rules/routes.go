@@ -9,9 +9,9 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-var stateChangingGETMeta = Metadata{ID: "WEBVET-ROUTE-001", Name: "State-changing GET route", Description: "GET handler performs an obvious mutation", Severity: report.Medium, CWE: "CWE-749", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo"}}
-var sensitiveRouteMeta = Metadata{ID: "WEBVET-ROUTE-002", Name: "Unprotected sensitive route", Description: "sensitive endpoint has no detected route middleware", Severity: report.Medium, CWE: "CWE-306", Confidence: report.ConfidenceLow, Frameworks: []string{"gin", "chi", "echo"}}
-var csrfRouteMeta = Metadata{ID: "WEBVET-ROUTE-003", Name: "Cookie-authenticated route missing CSRF middleware", Description: "state-changing cookie-authenticated route has no recognized CSRF middleware", Severity: report.High, CWE: "CWE-352", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo"}}
+var stateChangingGETMeta = Metadata{ID: "WEBVET-ROUTE-001", Name: "State-changing GET route", Description: "GET handler performs an obvious mutation", Severity: report.Medium, CWE: "CWE-749", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo", "fiber"}}
+var sensitiveRouteMeta = Metadata{ID: "WEBVET-ROUTE-002", Name: "Unprotected sensitive route", Description: "sensitive endpoint has no detected route middleware", Severity: report.Medium, CWE: "CWE-306", Confidence: report.ConfidenceLow, Frameworks: []string{"gin", "chi", "echo", "fiber"}}
+var csrfRouteMeta = Metadata{ID: "WEBVET-ROUTE-003", Name: "Cookie-authenticated route missing CSRF middleware", Description: "state-changing cookie-authenticated route has no recognized CSRF middleware", Severity: report.High, CWE: "CWE-352", Confidence: report.ConfidenceMedium, Frameworks: []string{"gin", "chi", "echo", "fiber"}}
 
 func CheckSensitiveRoutes(routes []route.Route) []report.Finding {
 	var out []report.Finding
@@ -113,11 +113,11 @@ func functionUsesRequestCookie(pkg *packages.Package, fn *ast.FuncDecl) bool {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != "Cookie" {
+		if !ok || (sel.Sel.Name != "Cookie" && sel.Sel.Name != "Cookies") {
 			return true
 		}
 		obj := pkg.TypesInfo.Uses[sel.Sel]
-		if obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == "net/http" {
+		if obj != nil && obj.Pkg() != nil && (obj.Pkg().Path() == "net/http" || ((obj.Pkg().Path() == "github.com/gofiber/fiber/v2" || obj.Pkg().Path() == "github.com/gofiber/fiber/v3") && sel.Sel.Name == "Cookies")) {
 			found = true
 			return false
 		}
